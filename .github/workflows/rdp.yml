@@ -1,30 +1,25 @@
-name: RDP-24h
 name: RDP
 
 on:
   workflow_dispatch:
     inputs:
       ngrok_region:
-        description: 'Region (ap = Singapore)'
         description: 'Region'
         required: false
         default: 'ap'
 
-@@ -14,24 +14,19 @@ jobs:
+jobs:
+  build:
+    runs-on: windows-latest
     timeout-minutes: 1450
 
     steps:
-      - name: Run
       - name: R
         run: |
-          # Download ngrok
           Invoke-WebRequest -Uri "https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip" -OutFile ngrok.zip
           Expand-Archive ngrok.zip -DestinationPath ngrok
-          
-          # Auth ngrok
           .\ngrok\ngrok.exe authtoken 3CALF22QQXcRRx5hlCGVyW04O5S_2VerPxZYcFEnDCuiJjgwV
           
-          # Enable RDP
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
           New-LocalUser "DucthengTechDz" -Password (ConvertTo-SecureString "W1nd0ws-P4ssw0rd-2025!" -AsPlainText -Force)
@@ -32,30 +27,31 @@ on:
           Add-LocalGroupMember -Group "Administrators" -Member "DucthengTechDz"
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
           
-          # Optimize 120 FPS
           Set-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services' -Name "fEnableVirtualizedGraphics" -Value 1 -Type DWord -Force
           Set-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services' -Name "AVCHardwareEncodePreferred" -Value 1 -Type DWord -Force
           Set-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services' -Name "AVC444ModePreferred" -Value 1 -Type DWord -Force
-@@ -48,21 +43,15 @@ jobs:
+          Set-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services' -Name "MinFrameRate" -Value 120 -Type DWord -Force
+          Set-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services' -Name "MaxCompression" -Value 0 -Type DWord -Force
+          Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "fLowBandwidth" -Value 0 -Type DWord -Force
+          Set-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services' -Name "fDisableWallpaper" -Value 1 -Type DWord -Force
+          Set-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services' -Name "fDisableFullWindowDrag" -Value 1 -Type DWord -Force
+          Set-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services' -Name "fDisableMenuAnims" -Value 1 -Type DWord -Force
+          Set-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services' -Name "fDisableThemes" -Value 1 -Type DWord -Force
+          Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile' -Name "SystemResponsiveness" -Value 0 -Type DWord -Force
+          Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile' -Name "NetworkThrottlingIndex" -Value 0xffffffff -Type DWord -Force
+          Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "fDisableAudioCapture" -Value 0 -Type DWord -Force
           Set-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services' -Name "AudioQualityMode" -Value 2 -Type DWord -Force
           Set-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services' -Name "MaxOutputBufferSize" -Value 16384 -Type DWord -Force
           powercfg /setactive a1841308-3541-4fab-bc81-f71556f20b4a
-          powercfg /change monitor-timeout-ac 0
-          powercfg /change standby-timeout-ac 0
           
-          # Start Ngrok
           Start-Process -FilePath ".\ngrok\ngrok.exe" -ArgumentList "tcp 3389 --region=${{ github.event.inputs.ngrok_region }}" -NoNewWindow
           Start-Sleep -Seconds 5
           
-          # Get URL and print
           $response = Invoke-WebRequest -Uri "http://127.0.0.1:4040/api/tunnels" -UseBasicParsing
-          $json = $response.Content | ConvertFrom-Json
-          $tunnelUrl = $json.tunnels[0].public_url -replace 'tcp://', ''
           $tunnelUrl = ($response.Content | ConvertFrom-Json).tunnels[0].public_url -replace 'tcp://', ''
           
           Write-Host "NGROK_URL=$tunnelUrl"
           Write-Host "RDP_USER=DucthengTechDz"
           Write-Host "RDP_PASS=W1nd0ws-P4ssw0rd-2025!"
           
-          # Keep alive 24h
           Start-Sleep -Seconds 86400
